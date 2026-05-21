@@ -79,11 +79,18 @@ export async function getUsers(params?: {
 
 export async function getUserById(id: string) {
   const { data } = await api.get(`/api/admin/users/${id}`);
-  // data.data = { user, subscriptions, recentTracking, totalWorkoutDays }
-  const detail = data.data ?? data;
-  return detail.user
-    ? { ...detail.user, _subscriptions: detail.subscriptions, _recentTracking: detail.recentTracking, _totalWorkoutDays: detail.totalWorkoutDays }
-    : detail;
+  // data.data = { user, subscriptions, recentTracking, totalChatMessages, totalWorkoutDays }
+  const detail = data?.data ?? data;
+  if (!detail) return null;
+  const user = detail.user ?? detail;
+  // Merge extra data into user object for easy access in UI
+  return {
+    ...(typeof user.toJSON === 'function' ? user.toJSON() : user),
+    _subscriptions: detail.subscriptions || [],
+    _recentTracking: detail.recentTracking || [],
+    _totalChatMessages: detail.totalChatMessages || 0,
+    _totalWorkoutDays: detail.totalWorkoutDays || 0,
+  };
 }
 
 export async function toggleUserPremium(id: string) {

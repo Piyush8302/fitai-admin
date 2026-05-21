@@ -3,7 +3,12 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getUserById, toggleUserPremium, deactivateUser } from '@/lib/api';
-import { formatDate, getInitials } from '@/lib/utils';
+import { formatDate, formatRelativeDate, getInitials } from '@/lib/utils';
+
+const safeDateFormat = (d: any, pattern?: string) => {
+  if (!d) return '---';
+  try { return pattern ? formatDate(d, pattern) : formatDate(d); } catch { return '---'; }
+};
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -170,7 +175,7 @@ export default function UserDetailPage() {
             { label: 'Height', value: user.height ? `${user.height} cm` : '---', icon: Ruler },
             { label: 'Weight', value: user.weight ? `${user.weight} kg` : '---', icon: Weight },
             { label: 'Target Weight', value: user.targetWeight ? `${user.targetWeight} kg` : '---', icon: Target },
-            { label: 'Joined', value: formatDate(user.createdAt), icon: Calendar },
+            { label: 'Joined', value: safeDateFormat(user.createdAt), icon: Calendar },
           ].map((item) => {
             const Icon = item.icon;
             return (
@@ -191,7 +196,7 @@ export default function UserDetailPage() {
         <h2 className="text-lg font-semibold text-white mb-3">Health & Fitness</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'BMI', value: user.bmi ? user.bmi.toFixed(1) : '---', icon: Heart, color: 'text-pink-400' },
+            { label: 'BMI', value: user.bmi ? Number(user.bmi).toFixed(1) : '---', icon: Heart, color: 'text-pink-400' },
             { label: 'BMR', value: user.bmr ? `${user.bmr} kcal` : '---', icon: Zap, color: 'text-yellow-400' },
             { label: 'Daily Calories (TDEE)', value: user.dailyCalories ? `${user.dailyCalories} kcal` : '---', icon: Flame, color: 'text-orange-400' },
             { label: 'Protein Need', value: user.proteinNeed ? `${user.proteinNeed}g` : '---', icon: Dumbbell, color: 'text-blue-400' },
@@ -231,7 +236,7 @@ export default function UserDetailPage() {
               <span className="text-xs text-muted uppercase tracking-wider">Expiry</span>
             </div>
             <p className="text-sm font-medium text-white">
-              {user.subscriptionExpiry ? formatDate(user.subscriptionExpiry) : '---'}
+              {safeDateFormat(user.subscriptionExpiry)}
             </p>
           </div>
           <div className="bg-card border border-border rounded-2xl p-4">
@@ -287,9 +292,9 @@ export default function UserDetailPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-muted font-mono">{sub.paymentId || '---'}</td>
-                    <td className="px-4 py-3 text-sm text-muted">{sub.startDate ? formatDate(sub.startDate) : '---'}</td>
-                    <td className="px-4 py-3 text-sm text-muted">{sub.endDate ? formatDate(sub.endDate) : '---'}</td>
-                    <td className="px-4 py-3 text-sm text-muted">{formatDate(sub.createdAt)}</td>
+                    <td className="px-4 py-3 text-sm text-muted">{safeDateFormat(sub.startDate)}</td>
+                    <td className="px-4 py-3 text-sm text-muted">{safeDateFormat(sub.endDate)}</td>
+                    <td className="px-4 py-3 text-sm text-muted">{safeDateFormat(sub.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>
