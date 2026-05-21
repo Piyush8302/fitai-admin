@@ -77,9 +77,13 @@ export async function getUsers(params?: {
   return data;
 }
 
-export async function getUserById(id: string): Promise<User> {
+export async function getUserById(id: string) {
   const { data } = await api.get(`/api/admin/users/${id}`);
-  return data.user ?? data;
+  // data.data = { user, subscriptions, recentTracking, totalWorkoutDays }
+  const detail = data.data ?? data;
+  return detail.user
+    ? { ...detail.user, _subscriptions: detail.subscriptions, _recentTracking: detail.recentTracking, _totalWorkoutDays: detail.totalWorkoutDays }
+    : detail;
 }
 
 export async function toggleUserPremium(id: string) {
