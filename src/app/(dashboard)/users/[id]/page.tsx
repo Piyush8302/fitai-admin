@@ -109,13 +109,9 @@ export default function UserDetailPage() {
       <div className="bg-card border border-border rounded-2xl p-6">
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div className="flex items-center gap-4">
-            {user.avatar ? (
-              <img src={user.avatar} alt={user.name} className="w-16 h-16 rounded-2xl object-cover border-2 border-primary/30" />
-            ) : (
-              <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center text-primary text-xl font-bold">
-                {getInitials(user.name || 'U')}
-              </div>
-            )}
+            <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center text-primary text-xl font-bold">
+              {getInitials(user.name || 'U')}
+            </div>
             <div>
               <h1 className="text-xl font-bold text-white">{user.name}</h1>
               <p className="text-sm text-muted">{user.email}</p>
@@ -245,7 +241,7 @@ export default function UserDetailPage() {
               <span className="text-xs text-muted uppercase tracking-wider">Chat Today</span>
             </div>
             <p className="text-sm font-medium text-white">
-              {user.dailyChatCount || 0} messages {user.lastChatDate ? `(${user.lastChatDate})` : ''}
+              {user.dailyChatCount || 0} messages {user.lastChatDate ? `(${safeDateFormat(user.lastChatDate, 'dd MMM')})` : ''}
             </p>
           </div>
           <div className="bg-card border border-border rounded-2xl p-4">
@@ -319,17 +315,16 @@ export default function UserDetailPage() {
               <tbody className="divide-y divide-border">
                 {recentTracking.map((t: any) => (
                   <tr key={t._id} className="hover:bg-card-hover transition-colors">
-                    <td className="px-4 py-3 text-sm text-white">{t.date}</td>
+                    <td className="px-4 py-3 text-sm text-white">{safeDateFormat(t.date, 'dd MMM yyyy')}</td>
                     <td className="px-4 py-3 text-sm">
                       <span className="text-white">{t.caloriesConsumed || 0}</span>
                       <span className="text-muted text-xs"> / {t.caloriesGoal || '---'}</span>
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <span className="text-white">{t.proteinConsumed || 0}g</span>
-                      <span className="text-muted text-xs"> / {t.proteinGoal || '---'}g</span>
                     </td>
                     <td className="px-4 py-3 text-sm text-white">{t.steps || 0}</td>
-                    <td className="px-4 py-3 text-sm text-white">{t.waterGlasses || 0} glasses</td>
+                    <td className="px-4 py-3 text-sm text-white">{t.waterIntake || 0} glasses</td>
                     <td className="px-4 py-3 text-sm">
                       {t.workoutCompleted ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success">
@@ -339,7 +334,7 @@ export default function UserDetailPage() {
                         <span className="text-muted text-xs">---</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-white">{t.meals?.length || 0}</td>
+                    <td className="px-4 py-3 text-sm text-white">{t.mealsLogged?.length || 0}</td>
                   </tr>
                 ))}
               </tbody>
@@ -349,23 +344,28 @@ export default function UserDetailPage() {
       )}
 
       {/* Meals Detail (latest day) */}
-      {recentTracking.length > 0 && recentTracking[0]?.meals?.length > 0 && (
+      {recentTracking.length > 0 && recentTracking[0]?.mealsLogged?.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold text-white mb-3">Latest Meals ({recentTracking[0].date})</h2>
+          <h2 className="text-lg font-semibold text-white mb-3">Latest Meals ({safeDateFormat(recentTracking[0].date, 'dd MMM yyyy')})</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {recentTracking[0].meals.map((meal: any, i: number) => (
+            {recentTracking[0].mealsLogged.map((meal: any, i: number) => (
               <div key={i} className="bg-card border border-border rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-primary uppercase font-medium">{meal.type || meal.mealType || 'Meal'}</span>
-                  <span className="text-xs text-muted">{meal.time || ''}</span>
+                  <span className="text-xs text-primary uppercase font-medium">{meal.mealType || 'Meal'}</span>
+                  <span className="text-xs text-muted">{meal.totalCalories || 0} kcal</span>
                 </div>
-                <p className="text-sm font-medium text-white">{meal.name || meal.foodName || 'Unknown'}</p>
-                <div className="flex gap-3 mt-2 text-xs text-muted">
-                  <span>{meal.calories || 0} kcal</span>
-                  <span>{meal.protein || 0}g protein</span>
-                  {meal.carbs != null && <span>{meal.carbs}g carbs</span>}
-                  {meal.fat != null && <span>{meal.fat}g fat</span>}
-                </div>
+                {meal.items && meal.items.length > 0 ? (
+                  <div className="space-y-1">
+                    {meal.items.map((item: any, j: number) => (
+                      <div key={j} className="flex justify-between text-sm">
+                        <span className="text-white">{item.name || 'Item'}</span>
+                        <span className="text-muted text-xs">{item.calories || 0} kcal · {item.protein || 0}g P</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted">No items logged</p>
+                )}
               </div>
             ))}
           </div>
