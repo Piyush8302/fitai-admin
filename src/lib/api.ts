@@ -98,9 +98,9 @@ export async function deactivateUser(id: string) {
 
 // ─── Subscriptions ───────────────────────────────────────────────────────────
 
-export async function getSubscriptions(): Promise<Subscription[]> {
-  const { data } = await api.get('/api/admin/subscriptions');
-  return data.subscriptions ?? data;
+export async function getSubscriptions(params?: { status?: string; page?: number }) {
+  const { data } = await api.get('/api/admin/subscriptions', { params });
+  return data;
 }
 
 // ─── Workouts ────────────────────────────────────────────────────────────────
