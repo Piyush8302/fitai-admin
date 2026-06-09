@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { getSubscriptions } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getSubscriptions, approvePayment, rejectPayment } from '@/lib/api';
+import toast from 'react-hot-toast';
 import { formatDate, formatRelativeDate, getInitials } from '@/lib/utils';
 import {
   CreditCard,
@@ -36,10 +37,23 @@ const statusStyles: Record<string, string> = {
 
 export default function SubscriptionsPage() {
   const [statusFilter, setStatusFilter] = useState('');
+  const queryClient = useQueryClient();
 
   const { data: response, isLoading } = useQuery({
     queryKey: ['subscriptions', statusFilter],
     queryFn: () => getSubscriptions(statusFilter ? { status: statusFilter } : {}),
+  });
+
+  const approve = useMutation({
+    mutationFn: (id: string) => approvePayment(id),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['subscriptions'] }); toast.success('Payment approved! Premium activated'); },
+    onError: () => toast.error('Failed to approve'),
+  });
+
+  const reject = useMutation({
+    mutationFn: (id: string) => rejectPayment(id),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['subscriptions'] }); toast.success('Payment rejected'); },
+    onError: () => toast.error('Failed to reject'),
   });
 
   const subscriptions = response?.data || [];
@@ -144,7 +158,7 @@ export default function SubscriptionsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border">
-                  {['User', 'Contact', 'Plan', 'Amount', 'Status', 'Order ID', 'Payment ID', 'Initiated', 'Start', 'End'].map((h) => (
+                  {['User', 'Contact', 'Plan', 'Amount', 'Method', 'Status', 'UTR / Payment ID', 'Initiated', 'Actions'].map((h) => (
                     <th key={h} className="text-left text-xs font-medium text-muted uppercase tracking-wider px-4 py-3 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -185,7 +199,12 @@ export default function SubscriptionsPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-white capitalize font-medium">{sub.plan}</td>
-                        <td className="px-4 py-3 text-sm font-semibold text-white">{sub.amount ? `${(sub.amount / 100).toFixed(0)}` : '---'}</td>
+                        <td className="px-4 py-3 text-sm font-semibold text-white">₹{sub.amount ? `${(sub.amount / 100).toFixed(0)}` : '---'}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${sub.paymentMethod === 'upi' ? 'bg-green-500/10 text-green-400' : 'bg-blue-500/10 text-blue-400'}`}>
+                            {sub.paymentMethod === 'upi' ? 'UPI' : 'Razorpay'}
+                          </span>
+                        </td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${statusStyles[sub.status] || 'bg-gray-700 text-gray-300 border-gray-600'}`}>
                             {sub.status === 'pending' && <Clock className="w-3 h-3" />}
@@ -194,26 +213,45 @@ export default function SubscriptionsPage() {
                             {sub.status}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-xs text-muted font-mono truncate max-w-[120px]" title={sub.orderId}>{sub.orderId || '---'}</td>
-                        <td className="px-4 py-3 text-xs font-mono truncate max-w-[120px]" title={sub.paymentId}>
-                          {sub.paymentId ? (
+                        <td className="px-4 py-3 text-xs font-mono">
+                          {sub.utrNumber ? (
+                            <span className="text-amber-400" title={`UTR: ${sub.utrNumber}`}>{sub.utrNumber}</span>
+                          ) : sub.paymentId ? (
                             <span className="text-emerald-400">{sub.paymentId}</span>
                           ) : (
-                            <span className="text-amber-400/60">---</span>
+                            <span className="text-muted">---</span>
                           )}
                         </td>
                         <td className="px-4 py-3">
                           <div className="text-xs text-muted">{formatRelativeDate(sub.createdAt)}</div>
-                          <div className="text-[10px] text-muted/60">{formatDate(sub.createdAt, 'dd MMM yyyy HH:mm')}</div>
                         </td>
-                        <td className="px-4 py-3 text-xs text-muted">{sub.startDate ? formatDate(sub.startDate, 'dd MMM yyyy') : '---'}</td>
-                        <td className="px-4 py-3 text-xs text-muted">{sub.endDate ? formatDate(sub.endDate, 'dd MMM yyyy') : '---'}</td>
+                        <td className="px-4 py-3">
+                          {isPending && sub.utrNumber && (
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => { if (confirm('Approve this payment?')) approve.mutate(sub._id); }}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs font-medium transition-colors"
+                              >
+                                ✓ Approve
+                              </button>
+                              <button
+                                onClick={() => { if (confirm('Reject this payment?')) reject.mutate(sub._id); }}
+                                className="px-2.5 py-1 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-medium transition-colors"
+                              >
+                                ✗ Reject
+                              </button>
+                            </div>
+                          )}
+                          {isPending && !sub.utrNumber && (
+                            <span className="text-[10px] text-amber-400/60">Awaiting UTR</span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })
                 ) : (
                   <tr>
-                    <td colSpan={10} className="px-5 py-16 text-center text-muted text-sm">
+                    <td colSpan={9} className="px-5 py-16 text-center text-muted text-sm">
                       <CreditCard className="w-10 h-10 mx-auto mb-3 opacity-40" />
                       {statusFilter ? `No ${statusFilter} subscriptions` : 'No subscriptions found'}
                     </td>

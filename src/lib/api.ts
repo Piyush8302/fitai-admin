@@ -208,6 +208,18 @@ export async function sendDailyTip() {
   return data;
 }
 
+// ─── Payment Approval ───────────────────────────────────────────────────────
+
+export async function approvePayment(id: string, note?: string) {
+  const { data } = await api.put(`/api/admin/subscriptions/${id}/approve`, { note });
+  return data;
+}
+
+export async function rejectPayment(id: string, note?: string) {
+  const { data } = await api.put(`/api/admin/subscriptions/${id}/reject`, { note });
+  return data;
+}
+
 // ─── Chat ────────────────────────────────────────────────────────────────────
 
 export async function getChatHistory(): Promise<ChatMessage[]> {
