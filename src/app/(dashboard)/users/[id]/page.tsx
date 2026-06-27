@@ -3,7 +3,7 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getUserById, toggleUserPremium, deactivateUser } from '@/lib/api';
-import { formatDate, formatRelativeDate, getInitials } from '@/lib/utils';
+import { formatDate, getInitials } from '@/lib/utils';
 
 const safeDateFormat = (d: any, pattern?: string) => {
   if (!d) return '---';
