@@ -220,6 +220,23 @@ export async function rejectPayment(id: string, note?: string) {
   return data;
 }
 
+// ─── Gym Owner Approval ──────────────────────────────────────────────────────
+
+export async function getOwnerRequests(status: string = 'pending') {
+  const { data } = await api.get('/api/admin/owner-requests', { params: { status } });
+  return data;
+}
+
+export async function approveOwnerRequest(userId: string) {
+  const { data } = await api.put(`/api/admin/owner-requests/${userId}/approve`);
+  return data;
+}
+
+export async function rejectOwnerRequest(userId: string) {
+  const { data } = await api.put(`/api/admin/owner-requests/${userId}/reject`);
+  return data;
+}
+
 // ─── Chat ────────────────────────────────────────────────────────────────────
 
 export async function getChatHistory(): Promise<ChatMessage[]> {

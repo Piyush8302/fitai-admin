@@ -14,6 +14,7 @@ import {
   Bell,
   BarChart3,
   Settings,
+  Building2,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -21,6 +22,7 @@ import {
 const navItems = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Users', href: '/users', icon: Users },
+  { label: 'Gym Owners', href: '/gym-owners', icon: Building2 },
   { label: 'Workouts', href: '/workouts', icon: Dumbbell },
   { label: 'Diet Plans', href: '/diet-plans', icon: Salad },
   { label: 'Articles', href: '/articles', icon: FileText },
