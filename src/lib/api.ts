@@ -237,6 +237,23 @@ export async function rejectOwnerRequest(userId: string) {
   return data;
 }
 
+// ─── Support / Contact Us ────────────────────────────────────────────────────
+
+export async function getSupportMessages(status: string = 'open') {
+  const { data } = await api.get('/api/admin/support', { params: { status } });
+  return data;
+}
+
+export async function resolveSupportMessage(id: string) {
+  const { data } = await api.put(`/api/admin/support/${id}/resolve`);
+  return data;
+}
+
+export async function deleteSupportMessage(id: string) {
+  const { data } = await api.delete(`/api/admin/support/${id}`);
+  return data;
+}
+
 // ─── Chat ────────────────────────────────────────────────────────────────────
 
 export async function getChatHistory(): Promise<ChatMessage[]> {
