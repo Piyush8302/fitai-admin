@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { getSupportMessages, resolveSupportMessage, deleteSupportMessage } from '@/lib/api';
-import { LifeBuoy, Mail, Phone, Clock, Check, Trash2, RefreshCw, Building2 } from 'lucide-react';
+import { getSupportMessages, resolveSupportMessage, deleteSupportMessage, updateUserContact } from '@/lib/api';
+import { LifeBuoy, Mail, Phone, Clock, Check, Trash2, RefreshCw, Building2, UserCog, X } from 'lucide-react';
 
 interface SupportMsg {
   _id: string;
+  user?: string;
   name?: string;
   email?: string;
   phone?: string;
@@ -15,6 +16,8 @@ interface SupportMsg {
   status: 'open' | 'resolved';
   createdAt?: string;
 }
+
+const isChangeRequest = (m: SupportMsg) => /change request|change my (email|phone|number)|update my (email|phone|number)/i.test(m.message || '');
 
 const TABS = [
   { key: 'open', label: 'Open' },
@@ -27,6 +30,36 @@ export default function SupportPage() {
   const [rows, setRows] = useState<SupportMsg[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Inline "apply contact change" editor
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const openEditor = (m: SupportMsg) => {
+    setEditId(m._id);
+    setEditEmail(m.email || '');
+    setEditPhone(m.phone || '');
+  };
+
+  const applyContact = async (m: SupportMsg) => {
+    if (!m.user) { alert('This message is not linked to a user account.'); return; }
+    setSaving(true);
+    try {
+      const res = await updateUserContact(m.user, { email: editEmail.trim(), phone: editPhone.trim() });
+      if (res?.success) {
+        alert('Contact updated: ' + (res.data?.email || '') + ' / ' + (res.data?.phone || ''));
+        setEditId(null);
+        await load();
+      } else {
+        alert(res?.message || 'Failed to update');
+      }
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      alert(msg || 'Failed to update contact');
+    }
+    setSaving(false);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -103,6 +136,9 @@ export default function SupportPage() {
                     {m.gymName && (
                       <span className="text-xs text-gray-400 flex items-center gap-1"><Building2 className="w-3.5 h-3.5" />{m.gymName}</span>
                     )}
+                    {isChangeRequest(m) && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">contact change</span>
+                    )}
                     {m.status === 'resolved' && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/15 text-green-400">resolved</span>
                     )}
@@ -114,6 +150,12 @@ export default function SupportPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  {m.user && (
+                    <button onClick={() => (editId === m._id ? setEditId(null) : openEditor(m))} title="Apply email/phone change"
+                      className="p-2 rounded-lg bg-amber-500/15 text-amber-400 hover:bg-amber-500/25">
+                      <UserCog className="w-4 h-4" />
+                    </button>
+                  )}
                   {m.status !== 'resolved' && (
                     <button disabled={busyId === m._id} onClick={() => resolve(m._id)} title="Mark resolved"
                       className="p-2 rounded-lg bg-green-500/15 text-green-400 hover:bg-green-500/25 disabled:opacity-50">
@@ -127,6 +169,35 @@ export default function SupportPage() {
                 </div>
               </div>
               <div className="mt-3 p-3 rounded-xl bg-gray-800/60 text-sm text-gray-200 whitespace-pre-wrap">{m.message}</div>
+
+              {editId === m._id && (
+                <div className="mt-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/30">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-semibold text-amber-400 flex items-center gap-2">
+                      <UserCog className="w-4 h-4" /> Apply contact change for {m.name || 'this user'}
+                    </span>
+                    <button onClick={() => setEditId(null)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">New Email</label>
+                      <input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="new@email.com"
+                        className="w-full px-3 py-2 rounded-lg bg-gray-900 border border-border text-sm text-white outline-none focus:border-primary" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">New Phone</label>
+                      <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="10-digit number"
+                        className="w-full px-3 py-2 rounded-lg bg-gray-900 border border-border text-sm text-white outline-none focus:border-primary" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">Read the requested values from the message above, then update. Leave a field unchanged to keep it.</p>
+                  <button disabled={saving} onClick={() => applyContact(m)}
+                    className="mt-3 px-4 py-2 rounded-lg bg-amber-500 text-black text-sm font-semibold hover:bg-amber-400 disabled:opacity-50">
+                    {saving ? 'Updating…' : 'Update contact'}
+                  </button>
+                </div>
+              )}
+
               {m.email && (
                 <a href={`mailto:${m.email}?subject=Re: Your FitAI support request`}
                   className="inline-flex items-center gap-1.5 mt-3 text-sm text-primary hover:underline">

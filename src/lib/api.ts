@@ -103,6 +103,11 @@ export async function deactivateUser(id: string) {
   return data;
 }
 
+export async function updateUserContact(id: string, payload: { email?: string; phone?: string }) {
+  const { data } = await api.put(`/api/admin/users/${id}/contact`, payload);
+  return data;
+}
+
 // ─── Subscriptions ───────────────────────────────────────────────────────────
 
 export async function getSubscriptions(params?: { status?: string; page?: number }) {
