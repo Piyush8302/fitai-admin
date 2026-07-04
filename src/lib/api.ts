@@ -201,6 +201,28 @@ export async function deleteArticle(id: string) {
   return data;
 }
 
+// ─── Gyms (platform oversight) ───────────────────────────────────────────────
+
+export async function getGyms(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+}) {
+  const { data } = await api.get('/api/admin/gyms', { params });
+  return data as { success: boolean; data: import('@/types').GymListItem[]; total: number; page: number; pages: number };
+}
+
+export async function getGymDetail(id: string) {
+  const { data } = await api.get(`/api/admin/gyms/${id}`);
+  return data as { success: boolean; data: import('@/types').GymDetail };
+}
+
+export async function toggleGymActive(id: string) {
+  const { data } = await api.put(`/api/admin/gyms/${id}/active`);
+  return data;
+}
+
 // ─── Notifications ───────────────────────────────────────────────────────────
 
 export async function sendNotification(notification: Notification) {

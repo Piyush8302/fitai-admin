@@ -1,24 +1,34 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { sendNotification, sendDailyTip } from '@/lib/api';
-import { Bell, Send, Loader2, Zap, Info, AlertTriangle, Gift } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { sendNotification, sendDailyTip, getGyms } from '@/lib/api';
+import { Bell, Send, Loader2, Zap, Info, AlertTriangle, Gift, Users, Crown, Building2, Store, User as UserIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+type Audience = 'all' | 'premium' | 'gym_owners' | 'gym_members' | 'user';
 
 export default function NotificationsPage() {
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [type, setType] = useState<'info' | 'warning' | 'success' | 'promo'>('info');
+  const [audience, setAudience] = useState<Audience>('all');
+  const [gymId, setGymId] = useState('');
   const [userId, setUserId] = useState('');
+
+  // Gyms list for the "specific gym members" target.
+  const { data: gymsData } = useQuery({
+    queryKey: ['gyms-picker'],
+    queryFn: () => getGyms({ limit: 100 }),
+    enabled: audience === 'gym_members',
+  });
 
   const sendMutation = useMutation({
     mutationFn: sendNotification,
-    onSuccess: () => {
-      toast.success('Notification sent!');
+    onSuccess: (res: any) => {
+      toast.success(res?.message || 'Notification sent!');
       setTitle('');
       setMessage('');
-      setUserId('');
     },
     onError: () => toast.error('Failed to send notification'),
   });
@@ -32,7 +42,15 @@ export default function NotificationsPage() {
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !message.trim()) return toast.error('Title and message are required');
-    sendMutation.mutate({ title, message, type, targetAudience: 'all' } as any);
+    if (audience === 'user') {
+      if (!userId.trim()) return toast.error('Enter a user ID (or pick a different audience)');
+      sendMutation.mutate({ userId, title, message, type } as any);
+    } else if (audience === 'gym_members') {
+      if (!gymId) return toast.error('Pick a gym');
+      sendMutation.mutate({ targetAudience: 'gym_members', gymId, title, message, type } as any);
+    } else {
+      sendMutation.mutate({ targetAudience: audience, title, message, type } as any);
+    }
   };
 
   const inputClass = 'w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm text-white placeholder-muted focus:outline-none focus:border-primary transition-colors';
@@ -45,24 +63,32 @@ export default function NotificationsPage() {
     { value: 'promo', label: 'Promo', icon: Gift, color: 'text-purple-400' },
   ];
 
+  const audienceOptions: { value: Audience; label: string; icon: typeof Users }[] = [
+    { value: 'all', label: 'All Users', icon: Users },
+    { value: 'premium', label: 'Premium', icon: Crown },
+    { value: 'gym_owners', label: 'Gym Owners', icon: Building2 },
+    { value: 'gym_members', label: 'Gym Members', icon: Store },
+    { value: 'user', label: 'Specific User', icon: UserIcon },
+  ];
+
   const templates = [
     { title: 'Workout Reminder', message: "Don't forget your workout today! Stay consistent for best results. 💪" },
     { title: 'New Feature', message: 'Check out our new AI-powered meal planning feature! Get personalized diet plans. 🍽️' },
     { title: 'Weekly Challenge', message: 'New weekly challenge is live! Complete 5 workouts this week to earn a badge. 🏆' },
-    { title: 'Hydration Reminder', message: "Stay hydrated! Aim for 8 glasses of water today. Your body will thank you. 💧" },
+    { title: 'Hydration Reminder', message: 'Stay hydrated! Aim for 8 glasses of water today. Your body will thank you. 💧' },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Notifications</h1>
-          <p className="text-sm text-muted mt-1">Send notifications to your users</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2"><Bell className="w-5 h-5 text-primary" /> Notifications</h1>
+          <p className="text-sm text-muted mt-1">Send push + in-app notifications to a chosen audience</p>
         </div>
         <button
           onClick={() => { if (confirm('Send a daily health tip to ALL users?')) tipMutation.mutate(); }}
           disabled={tipMutation.isPending}
-          className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-sm font-medium text-white transition-colors disabled:opacity-50"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-sm font-medium text-white transition-colors disabled:opacity-50"
         >
           {tipMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
           Send Daily Tip
@@ -72,14 +98,56 @@ export default function NotificationsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Send Form */}
         <div className="lg:col-span-2">
-          <form onSubmit={handleSend} className="bg-card border border-border rounded-2xl p-6 space-y-4">
+          <form onSubmit={handleSend} className="bg-card border border-border rounded-2xl p-4 sm:p-6 space-y-4">
             <h2 className="text-lg font-semibold text-white flex items-center gap-2">
               <Send className="w-5 h-5 text-primary" /> Compose Notification
             </h2>
 
+            {/* Audience */}
+            <div>
+              <label className={labelClass}>Send to</label>
+              <div className="flex flex-wrap gap-2">
+                {audienceOptions.map((opt) => {
+                  const Icon = opt.icon;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setAudience(opt.value)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors border ${
+                        audience === opt.value ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card hover:bg-card-hover text-muted'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" /> {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Conditional: gym picker or user id */}
+            {audience === 'gym_members' && (
+              <div>
+                <label className={labelClass}>Gym *</label>
+                <select value={gymId} onChange={(e) => setGymId(e.target.value)} className={inputClass}>
+                  <option value="">Select a gym…</option>
+                  {(gymsData?.data || []).map((g) => (
+                    <option key={g._id} value={g._id}>{g.name} — {g.city || g.gymCode} ({g.members} members)</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {audience === 'user' && (
+              <div>
+                <label className={labelClass}>User ID *</label>
+                <input type="text" value={userId} onChange={(e) => setUserId(e.target.value)} className={inputClass} placeholder="Specific user ID" />
+              </div>
+            )}
+
+            {/* Type */}
             <div>
               <label className={labelClass}>Notification Type</label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {typeOptions.map((opt) => {
                   const Icon = opt.icon;
                   return (
@@ -88,9 +156,7 @@ export default function NotificationsPage() {
                       type="button"
                       onClick={() => setType(opt.value as any)}
                       className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors border ${
-                        type === opt.value
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-border bg-card hover:bg-card-hover text-muted'
+                        type === opt.value ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card hover:bg-card-hover text-muted'
                       }`}
                     >
                       <Icon className={`w-4 h-4 ${type === opt.value ? 'text-primary' : opt.color}`} />
@@ -99,11 +165,6 @@ export default function NotificationsPage() {
                   );
                 })}
               </div>
-            </div>
-
-            <div>
-              <label className={labelClass}>User ID (leave empty to send to all)</label>
-              <input type="text" value={userId} onChange={(e) => setUserId(e.target.value)} className={inputClass} placeholder="Optional: specific user ID" />
             </div>
 
             <div>

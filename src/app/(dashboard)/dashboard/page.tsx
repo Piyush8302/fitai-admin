@@ -14,6 +14,11 @@ import {
   FileText,
   Loader2,
   TrendingUp,
+  Store,
+  UserCheck,
+  Wallet,
+  Clock,
+  Ban,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -98,27 +103,63 @@ export default function DashboardPage() {
     },
   ];
 
+  // Gym platform KPIs (clickable — open the gyms / owner-requests pages).
+  const gymCards = [
+    { label: 'Total Gyms', value: formatNumber(stats?.totalGyms ?? 0), icon: Store, color: 'text-primary', bg: 'bg-primary/10', href: '/gyms' },
+    { label: 'Active Gyms', value: formatNumber(stats?.activeGyms ?? 0), icon: UserCheck, color: 'text-green-400', bg: 'bg-green-400/10', href: '/gyms?status=active' },
+    { label: 'Suspended', value: formatNumber(stats?.suspendedGyms ?? 0), icon: Ban, color: 'text-red-400', bg: 'bg-red-400/10', href: '/gyms?status=suspended' },
+    { label: 'Gym Members', value: formatNumber(stats?.totalGymMembers ?? 0), icon: Users, color: 'text-blue-400', bg: 'bg-blue-400/10', href: '/gyms' },
+    { label: 'Gym Revenue', value: formatCurrency(stats?.gymRevenue ?? 0, 'INR'), icon: Wallet, color: 'text-emerald-400', bg: 'bg-emerald-400/10', href: '/gyms' },
+    { label: 'Pending Requests', value: formatNumber(stats?.pendingOwnerRequests ?? 0), icon: Clock, color: 'text-amber-400', bg: 'bg-amber-400/10', href: '/gym-owners' },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* KPI Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <div
-              key={card.label}
-              className="bg-card border border-border rounded-2xl p-5 hover:border-border-light transition-colors"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm text-muted">{card.label}</span>
-                <div className={`w-10 h-10 rounded-xl ${card.bg} flex items-center justify-center`}>
+      {/* Gym platform KPIs */}
+      <div>
+        <h2 className="text-sm font-semibold text-muted uppercase tracking-wider mb-3">Gym Platform</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+          {gymCards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <Link
+                key={card.label}
+                href={card.href}
+                className="bg-card border border-border rounded-2xl p-4 hover:border-primary/50 transition-colors"
+              >
+                <div className={`w-9 h-9 rounded-xl ${card.bg} flex items-center justify-center mb-3`}>
                   <Icon className={`w-5 h-5 ${card.color}`} />
                 </div>
+                <p className="text-xl font-bold text-white leading-tight">{card.value}</p>
+                <span className="text-xs text-muted">{card.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* App / content KPIs */}
+      <div>
+        <h2 className="text-sm font-semibold text-muted uppercase tracking-wider mb-3">App & Content</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {statCards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <div
+                key={card.label}
+                className="bg-card border border-border rounded-2xl p-4 sm:p-5 hover:border-border-light transition-colors"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs sm:text-sm text-muted">{card.label}</span>
+                  <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${card.bg} flex items-center justify-center`}>
+                    <Icon className={`w-5 h-5 ${card.color}`} />
+                  </div>
+                </div>
+                <p className="text-xl sm:text-2xl font-bold text-white">{card.value}</p>
               </div>
-              <p className="text-2xl font-bold text-white">{card.value}</p>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* Recent Users Table */}

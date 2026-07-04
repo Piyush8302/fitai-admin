@@ -33,6 +33,69 @@ export interface DashboardStats {
   totalDietPlans: number;
   totalArticles: number;
   recentUsers: User[];
+  // Gym platform KPIs
+  totalGyms?: number;
+  activeGyms?: number;
+  suspendedGyms?: number;
+  totalGymMembers?: number;
+  gymRevenue?: number;
+  pendingOwnerRequests?: number;
+}
+
+export interface GymOwnerRef {
+  _id: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+}
+
+export interface GymListItem {
+  _id: string;
+  name: string;
+  city: string;
+  gymCode: string;
+  phone: string;
+  isActive: boolean;
+  hasLocation: boolean;
+  owner: GymOwnerRef | null;
+  members: number;
+  revenue: number;
+  createdAt: string;
+}
+
+export interface GymDetail {
+  gym: {
+    _id: string;
+    name: string;
+    city?: string;
+    location?: string;
+    phone?: string;
+    gymCode: string;
+    isActive: boolean;
+    hasLocation: boolean;
+    slots: { open: string; close: string }[];
+    planPrices: Record<string, number>;
+    createdAt: string;
+  };
+  owner: GymOwnerRef | null;
+  stats: {
+    totalMembers: number;
+    activeMembers: number;
+    staffCount: number;
+    revenue: number;
+    payments: number;
+    checkinsToday: number;
+  };
+  staff: { _id: string; name?: string; phone?: string; staffRole?: string; staffStatus?: string }[];
+  members: {
+    _id: string;
+    user: { _id: string; name?: string; phone?: string; avatar?: string } | null;
+    plan: string;
+    fee: number;
+    status: string;
+    dueDate?: string;
+    joinDate?: string;
+  }[];
 }
 
 export interface PaginatedResponse<T> {
@@ -137,7 +200,8 @@ export interface Notification {
   title: string;
   message: string;
   type: 'info' | 'warning' | 'success' | 'promo';
-  targetAudience: 'all' | 'premium' | 'free';
+  targetAudience: 'all' | 'premium' | 'free' | 'gym_owners' | 'gym_members';
+  gymId?: string;
   sentAt?: string;
 }
 

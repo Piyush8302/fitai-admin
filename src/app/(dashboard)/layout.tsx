@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
@@ -10,6 +10,11 @@ import { Loader2 } from 'lucide-react';
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Close the mobile drawer on route change.
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -34,12 +39,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar />
-      {/* Main content area - offset by sidebar width. The sidebar is 256px (w-64) when expanded, 72px when collapsed.
-          We use ml-[72px] as default to support collapsed state, and the content fills remaining width. */}
-      <div className="ml-[72px] lg:ml-64 flex flex-col min-h-screen transition-all duration-300">
-        <Topbar />
-        <main className="flex-1 p-6 overflow-auto">{children}</main>
+      <Sidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
+      {/* Content is full-width on mobile (sidebar is an off-canvas drawer) and
+          offset by the 256px sidebar from lg up. */}
+      <div className="lg:ml-64 flex flex-col min-h-screen">
+        <Topbar onMenuClick={() => setMobileOpen(true)} />
+        <main className="flex-1 p-4 sm:p-6 overflow-auto">{children}</main>
       </div>
     </div>
   );
