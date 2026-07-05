@@ -90,9 +90,22 @@ export default function GymDetailPage() {
             gym.isActive ? 'bg-danger/15 text-danger hover:bg-danger/25' : 'bg-success/15 text-success hover:bg-success/25'
           }`}
         >
-          {toggle.isPending ? '…' : gym.isActive ? 'Suspend gym' : 'Activate gym'}
+          {toggle.isPending ? '…' : gym.isActive ? 'Suspend gym' : (gym.reactivationRequested ? 'Approve & activate' : 'Activate gym')}
         </button>
       </div>
+
+      {/* Reactivation request highlight */}
+      {!gym.isActive && gym.reactivationRequested && (
+        <div className="bg-amber-400/10 border border-amber-400/30 rounded-2xl p-4 flex items-start gap-3">
+          <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-amber-400">Reactivation requested by owner</p>
+            <p className="text-xs text-muted mt-0.5">
+              {gym.reactivationNote ? `“${gym.reactivationNote}”` : 'The owner has asked to reactivate this gym.'} Use “Approve & activate” above to un-suspend it.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

@@ -12,6 +12,7 @@ const STATUS_TABS = [
   { key: '', label: 'All' },
   { key: 'active', label: 'Active' },
   { key: 'suspended', label: 'Suspended' },
+  { key: 'requested', label: 'Requests' },
 ];
 
 export default function GymsPage() {
@@ -100,6 +101,11 @@ function GymsList() {
                       {g.isActive ? <CheckCircle2 className="w-3 h-3" /> : <Ban className="w-3 h-3" />}
                       {g.isActive ? 'Active' : 'Suspended'}
                     </span>
+                    {!g.isActive && g.reactivationRequested && (
+                      <span className="inline-flex items-center gap-1 shrink-0 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-400/15 text-amber-400">
+                        Reactivation requested
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-muted flex items-center gap-1 mt-0.5 truncate">
                     <MapPin className="w-3 h-3 shrink-0" /> {g.city || 'No city'} · {g.gymCode}

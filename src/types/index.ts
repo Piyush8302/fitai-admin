@@ -56,6 +56,7 @@ export interface GymListItem {
   gymCode: string;
   phone: string;
   isActive: boolean;
+  reactivationRequested?: boolean;
   hasLocation: boolean;
   owner: GymOwnerRef | null;
   members: number;
@@ -72,6 +73,8 @@ export interface GymDetail {
     phone?: string;
     gymCode: string;
     isActive: boolean;
+    reactivationRequested?: boolean;
+    reactivationNote?: string;
     hasLocation: boolean;
     slots: { open: string; close: string }[];
     planPrices: Record<string, number>;
