@@ -68,7 +68,7 @@ export default function DashboardPage() {
     },
     {
       label: 'Total Revenue',
-      value: formatCurrency(stats?.totalRevenue ?? 0),
+      value: formatCurrency(stats?.totalRevenue ?? 0, 'INR'),
       icon: DollarSign,
       color: 'text-emerald-400',
       bg: 'bg-emerald-400/10',

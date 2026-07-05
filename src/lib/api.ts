@@ -63,7 +63,9 @@ export async function getMe(): Promise<User> {
 
 export async function getDashboardStats(): Promise<DashboardStats> {
   const { data } = await api.get('/api/admin/dashboard');
-  return data;
+  // Backend wraps the payload as { success, data }. Unwrap so callers read fields
+  // directly (stats.totalUsers, not stats.data.totalUsers → which showed all 0s).
+  return data.data ?? data;
 }
 
 // ─── Users ───────────────────────────────────────────────────────────────────
