@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getUsers, toggleUserPremium, deactivateUser, deleteUser } from '@/lib/api';
+import { getUsers, toggleUserPremium, deactivateUser, deleteUser, bulkUsers, getGyms } from '@/lib/api';
 import { formatRelativeDate, getInitials } from '@/lib/utils';
 import {
   Users,
@@ -15,6 +15,7 @@ import {
   Eye,
   Store,
   Trash2,
+  X,
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -22,20 +23,78 @@ import toast from 'react-hot-toast';
 // How a user is attached to a gym, shortened for the badge.
 const ROLE_SHORT: Record<string, string> = { member: 'member', owner: 'owner', staff: 'staff' };
 
+type UserType = '' | 'owner' | 'staff' | 'member' | 'app' | 'admin';
+type UserStatus = '' | 'active' | 'inactive';
+type UserPlan = '' | 'premium' | 'free';
+
+const TYPE_TABS: { key: UserType; label: string }[] = [
+  { key: '', label: 'All' },
+  { key: 'owner', label: 'Owners' },
+  { key: 'staff', label: 'Staff' },
+  { key: 'member', label: 'Members' },
+  { key: 'app', label: 'App-only' },
+  { key: 'admin', label: 'Admins' },
+];
+
 export default function UsersPage() {
   const [search, setSearch] = useState('');
+  const [type, setType] = useState<UserType>('');
+  const [statusF, setStatusF] = useState<UserStatus>('');
+  const [planF, setPlanF] = useState<UserPlan>('');
+  const [gymId, setGymId] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const limit = 15;
   const queryClient = useQueryClient();
 
+  // Gyms for the "filter by gym" dropdown (small list — grab a big page once).
+  const { data: gymsData } = useQuery({
+    queryKey: ['gyms-for-filter'],
+    queryFn: () => getGyms({ limit: 200 }),
+  });
+  const gymOptions = gymsData?.data ?? [];
+
   const { data, isLoading } = useQuery({
-    queryKey: ['users', search, page],
-    queryFn: () => getUsers({ search, page, limit }),
+    queryKey: ['users', search, type, statusF, planF, gymId, page],
+    queryFn: () =>
+      getUsers({
+        search,
+        page,
+        limit,
+        type: type || undefined,
+        status: statusF || undefined,
+        isPremium: planF === '' ? undefined : planF === 'premium',
+        gymId: gymId || undefined,
+      }),
   });
 
   const users = data?.users ?? data?.data ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / limit) || 1;
+
+  // Clear the selection whenever the visible list changes (filters/page/search),
+  // so a hidden row can never stay silently selected.
+  useEffect(() => { setSelected(new Set()); }, [search, type, statusF, planF, gymId, page]);
+
+  const toggleOne = (id: string) =>
+    setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const allShownSelected = users.length > 0 && users.every((u: any) => selected.has(u._id));
+  const toggleAll = () =>
+    setSelected((s) => {
+      if (users.every((u: any) => s.has(u._id))) return new Set();
+      return new Set(users.map((u: any) => u._id));
+    });
+
+  const bulk = useMutation({
+    mutationFn: ({ action, ids }: { action: 'deactivate' | 'delete'; ids: string[] }) => bulkUsers(action, ids),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setSelected(new Set());
+      const skipped = res.data?.skipped?.length;
+      toast.success(res.message + (skipped ? ` (${skipped} protected user${skipped > 1 ? 's' : ''} skipped)` : ''));
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Bulk action failed'),
+  });
 
   const togglePremiumMutation = useMutation({
     mutationFn: toggleUserPremium,
@@ -74,17 +133,102 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-        <input
-          type="text"
-          placeholder="Search by name or email..."
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm text-white placeholder-muted focus:outline-none focus:border-primary transition-colors"
-        />
+      {/* Search + filters */}
+      <div className="space-y-3">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+          <input
+            type="text"
+            placeholder="Search by name, email or phone..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm text-white placeholder-muted focus:outline-none focus:border-primary transition-colors"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Type — the main filter (owner / staff / member / app-only / admin) */}
+          <div className="flex gap-1 bg-card border border-border rounded-xl p-1">
+            {TYPE_TABS.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => { setType(t.key); setPage(1); }}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  type === t.key ? 'bg-primary text-white' : 'text-muted hover:text-white'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Plan */}
+          <select
+            value={planF}
+            onChange={(e) => { setPlanF(e.target.value as UserPlan); setPage(1); }}
+            className="bg-card border border-border rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-primary"
+          >
+            <option value="">All plans</option>
+            <option value="premium">Premium</option>
+            <option value="free">Free</option>
+          </select>
+
+          {/* Status */}
+          <select
+            value={statusF}
+            onChange={(e) => { setStatusF(e.target.value as UserStatus); setPage(1); }}
+            className="bg-card border border-border rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-primary"
+          >
+            <option value="">All status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+
+          {/* Filter by gym — its members, owner and staff */}
+          <select
+            value={gymId}
+            onChange={(e) => { setGymId(e.target.value); setPage(1); }}
+            className="bg-card border border-border rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-primary max-w-[200px]"
+          >
+            <option value="">All gyms</option>
+            {gymOptions.map((g: any) => (
+              <option key={g._id} value={g._id}>{g.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
+
+      {/* Bulk action bar — appears once rows are selected */}
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/40 bg-primary/10 px-4 py-2.5">
+          <span className="text-sm font-semibold text-white">{selected.size} selected</span>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (confirm(`Deactivate ${selected.size} selected user(s)? (admins are skipped)`))
+                  bulk.mutate({ action: 'deactivate', ids: [...selected] });
+              }}
+              disabled={bulk.isPending}
+              className="rounded-lg bg-amber-400/15 px-3 py-1.5 text-sm font-medium text-amber-400 hover:bg-amber-400/25 disabled:opacity-50"
+            >
+              <ShieldOff className="mr-1 inline w-4 h-4" /> Deactivate
+            </button>
+            <button
+              onClick={() => {
+                if (confirm(`Permanently DELETE ${selected.size} selected user(s)?\n\nProtected users (admins, gym owners, yourself) are skipped. This cannot be undone.`))
+                  bulk.mutate({ action: 'delete', ids: [...selected] });
+              }}
+              disabled={bulk.isPending}
+              className="rounded-lg bg-danger/15 px-3 py-1.5 text-sm font-medium text-danger hover:bg-danger/25 disabled:opacity-50"
+            >
+              <Trash2 className="mr-1 inline w-4 h-4" /> Delete
+            </button>
+            <button onClick={() => setSelected(new Set())} className="rounded-lg p-1.5 text-muted hover:text-white" title="Clear">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -97,6 +241,15 @@ export default function UsersPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border">
+                  <th className="px-4 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={allShownSelected}
+                      onChange={toggleAll}
+                      className="h-4 w-4 accent-primary cursor-pointer"
+                      aria-label="Select all"
+                    />
+                  </th>
                   {['User', 'Email', 'Gym', 'Status', 'Plan', 'Joined', 'Actions'].map((h) => (
                     <th key={h} className="text-left text-xs font-medium text-muted uppercase tracking-wider px-5 py-3">
                       {h}
@@ -107,7 +260,16 @@ export default function UsersPage() {
               <tbody className="divide-y divide-border">
                 {users.length > 0 ? (
                   users.map((user: any) => (
-                    <tr key={user._id} className="hover:bg-card-hover transition-colors">
+                    <tr key={user._id} className={`transition-colors ${selected.has(user._id) ? 'bg-primary/5' : 'hover:bg-card-hover'}`}>
+                      <td className="px-4 py-4 w-10">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(user._id)}
+                          onChange={() => toggleOne(user._id)}
+                          className="h-4 w-4 accent-primary cursor-pointer"
+                          aria-label={`Select ${user.name}`}
+                        />
+                      </td>
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-semibold">
@@ -186,7 +348,7 @@ export default function UsersPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="px-5 py-16 text-center text-muted text-sm">
+                    <td colSpan={8} className="px-5 py-16 text-center text-muted text-sm">
                       <Users className="w-10 h-10 mx-auto mb-3 opacity-40" />
                       No users found
                     </td>

@@ -74,9 +74,20 @@ export async function getUsers(params?: {
   search?: string;
   page?: number;
   limit?: number;
+  isPremium?: boolean;
+  status?: 'active' | 'inactive';
+  type?: 'owner' | 'staff' | 'admin' | 'member' | 'app';
+  gymId?: string;
 }) {
   const { data } = await api.get('/api/admin/users', { params });
   return data;
+}
+
+// Bulk deactivate/delete selected users. Delete skips protected users (admins,
+// yourself, gym owners) and reports them in data.skipped.
+export async function bulkUsers(action: 'deactivate' | 'delete', ids: string[]) {
+  const { data } = await api.post('/api/admin/users/bulk', { action, ids });
+  return data as { success: boolean; message: string; data?: { deleted?: number; skipped?: { id: string; reason: string }[]; modified?: number } };
 }
 
 export async function getUserById(id: string) {
@@ -216,6 +227,7 @@ export async function getGyms(params?: {
   limit?: number;
   search?: string;
   status?: string;
+  location?: 'set' | 'none';
 }) {
   const { data } = await api.get('/api/admin/gyms', { params });
   return data as { success: boolean; data: import('@/types').GymListItem[]; total: number; page: number; pages: number };
@@ -235,6 +247,12 @@ export async function toggleGymActive(id: string) {
 export async function deleteGym(id: string) {
   const { data } = await api.delete(`/api/admin/gyms/${id}`);
   return data;
+}
+
+// Bulk suspend/activate selected gyms.
+export async function bulkGyms(action: 'suspend' | 'activate', ids: string[]) {
+  const { data } = await api.post('/api/admin/gyms/bulk', { action, ids });
+  return data as { success: boolean; message: string; data?: { modified?: number } };
 }
 
 // ─── Notifications ───────────────────────────────────────────────────────────
