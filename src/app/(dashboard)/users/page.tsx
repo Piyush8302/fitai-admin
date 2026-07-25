@@ -22,15 +22,39 @@ import toast from 'react-hot-toast';
 // How a user is attached to a gym, shortened for the badge.
 const ROLE_SHORT: Record<string, string> = { member: 'member', owner: 'owner', staff: 'staff' };
 
+type UserType = '' | 'owner' | 'staff' | 'member' | 'app' | 'admin';
+type UserStatus = '' | 'active' | 'inactive';
+type UserPlan = '' | 'premium' | 'free';
+
+const TYPE_TABS: { key: UserType; label: string }[] = [
+  { key: '', label: 'All' },
+  { key: 'owner', label: 'Owners' },
+  { key: 'staff', label: 'Staff' },
+  { key: 'member', label: 'Members' },
+  { key: 'app', label: 'App-only' },
+  { key: 'admin', label: 'Admins' },
+];
+
 export default function UsersPage() {
   const [search, setSearch] = useState('');
+  const [type, setType] = useState<UserType>('');
+  const [statusF, setStatusF] = useState<UserStatus>('');
+  const [planF, setPlanF] = useState<UserPlan>('');
   const [page, setPage] = useState(1);
   const limit = 15;
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['users', search, page],
-    queryFn: () => getUsers({ search, page, limit }),
+    queryKey: ['users', search, type, statusF, planF, page],
+    queryFn: () =>
+      getUsers({
+        search,
+        page,
+        limit,
+        type: type || undefined,
+        status: statusF || undefined,
+        isPremium: planF === '' ? undefined : planF === 'premium',
+      }),
   });
 
   const users = data?.users ?? data?.data ?? [];
@@ -74,16 +98,57 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-        <input
-          type="text"
-          placeholder="Search by name or email..."
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm text-white placeholder-muted focus:outline-none focus:border-primary transition-colors"
-        />
+      {/* Search + filters */}
+      <div className="space-y-3">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+          <input
+            type="text"
+            placeholder="Search by name, email or phone..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm text-white placeholder-muted focus:outline-none focus:border-primary transition-colors"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Type — the main filter (owner / staff / member / app-only / admin) */}
+          <div className="flex gap-1 bg-card border border-border rounded-xl p-1">
+            {TYPE_TABS.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => { setType(t.key); setPage(1); }}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  type === t.key ? 'bg-primary text-white' : 'text-muted hover:text-white'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Plan */}
+          <select
+            value={planF}
+            onChange={(e) => { setPlanF(e.target.value as UserPlan); setPage(1); }}
+            className="bg-card border border-border rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-primary"
+          >
+            <option value="">All plans</option>
+            <option value="premium">Premium</option>
+            <option value="free">Free</option>
+          </select>
+
+          {/* Status */}
+          <select
+            value={statusF}
+            onChange={(e) => { setStatusF(e.target.value as UserStatus); setPage(1); }}
+            className="bg-card border border-border rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-primary"
+          >
+            <option value="">All status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
       </div>
 
       {/* Table */}

@@ -23,9 +23,16 @@ export default function GymsPage() {
   );
 }
 
+const LOCATION_TABS = [
+  { key: '', label: 'Any location' },
+  { key: 'set', label: 'Location set' },
+  { key: 'none', label: 'No location' },
+];
+
 function GymsList() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState(searchParams.get('status') || '');
+  const [location, setLocation] = useState('');
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
   const [page, setPage] = useState(1);
@@ -37,8 +44,8 @@ function GymsList() {
   }, [search]);
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['gyms', status, debounced, page],
-    queryFn: () => getGyms({ status: status || undefined, search: debounced || undefined, page, limit: 12 }),
+    queryKey: ['gyms', status, location, debounced, page],
+    queryFn: () => getGyms({ status: status || undefined, location: (location || undefined) as 'set' | 'none' | undefined, search: debounced || undefined, page, limit: 12 }),
     placeholderData: keepPreviousData,
   });
 
@@ -71,6 +78,21 @@ function GymsList() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Location filter — find gyms that still need GPS set (can't do check-in) */}
+      <div className="flex gap-1 bg-card border border-border rounded-xl p-1 w-fit">
+        {LOCATION_TABS.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => { setLocation(t.key); setPage(1); }}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              location === t.key ? 'bg-primary text-white' : 'text-muted hover:text-white'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {/* List */}

@@ -74,6 +74,9 @@ export async function getUsers(params?: {
   search?: string;
   page?: number;
   limit?: number;
+  isPremium?: boolean;
+  status?: 'active' | 'inactive';
+  type?: 'owner' | 'staff' | 'admin' | 'member' | 'app';
 }) {
   const { data } = await api.get('/api/admin/users', { params });
   return data;
@@ -216,6 +219,7 @@ export async function getGyms(params?: {
   limit?: number;
   search?: string;
   status?: string;
+  location?: 'set' | 'none';
 }) {
   const { data } = await api.get('/api/admin/gyms', { params });
   return data as { success: boolean; data: import('@/types').GymListItem[]; total: number; page: number; pages: number };
