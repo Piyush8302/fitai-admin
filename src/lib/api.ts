@@ -105,6 +105,12 @@ export async function deactivateUser(id: string) {
   return data;
 }
 
+// Permanent. Refused (409) while the user still owns a gym — delete the gym first.
+export async function deleteUser(id: string) {
+  const { data } = await api.delete(`/api/admin/users/${id}`);
+  return data;
+}
+
 export async function updateUserContact(id: string, payload: { email?: string; phone?: string }) {
   const { data } = await api.put(`/api/admin/users/${id}/contact`, payload);
   return data;
@@ -222,6 +228,12 @@ export async function getGymDetail(id: string) {
 
 export async function toggleGymActive(id: string) {
   const { data } = await api.put(`/api/admin/gyms/${id}/active`);
+  return data;
+}
+
+// Permanent — also removes the gym's members, payments, attendance and cashbook.
+export async function deleteGym(id: string) {
+  const { data } = await api.delete(`/api/admin/gyms/${id}`);
   return data;
 }
 

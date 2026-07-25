@@ -2,14 +2,14 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getGymDetail, toggleGymActive } from '@/lib/api';
+import { getGymDetail, toggleGymActive, deleteGym } from '@/lib/api';
 import { formatCurrency, formatNumber, formatDate, getInitials } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import {
   ArrowLeft, Store, MapPin, Phone, Users, Wallet, UserCheck,
-  CalendarCheck, Loader2, CheckCircle2, Ban, Clock,
+  CalendarCheck, Loader2, CheckCircle2, Ban, Clock, Trash2,
 } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -23,6 +23,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function GymDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const qc = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
@@ -40,6 +41,17 @@ export default function GymDetailPage() {
       qc.invalidateQueries({ queryKey: ['dashboard-stats'] });
     },
     onError: () => toast.error('Failed to update gym'),
+  });
+
+  const remove = useMutation({
+    mutationFn: () => deleteGym(id),
+    onSuccess: (res: { message?: string }) => {
+      toast.success(res.message || 'Gym deleted');
+      qc.invalidateQueries({ queryKey: ['gyms'] });
+      qc.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      router.push('/gyms');
+    },
+    onError: () => toast.error('Failed to delete gym'),
   });
 
   if (isLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>;
@@ -81,17 +93,39 @@ export default function GymDetailPage() {
             <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {gym.hasLocation ? 'Location set' : 'No location'}</span>
           </div>
         </div>
-        <button
-          onClick={() => {
-            if (confirm(gym.isActive ? 'Suspend this gym? It will be disabled platform-wide.' : 'Re-activate this gym?')) toggle.mutate();
-          }}
-          disabled={toggle.isPending}
-          className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-            gym.isActive ? 'bg-danger/15 text-danger hover:bg-danger/25' : 'bg-success/15 text-success hover:bg-success/25'
-          }`}
-        >
-          {toggle.isPending ? '…' : gym.isActive ? 'Suspend gym' : (gym.reactivationRequested ? 'Approve & activate' : 'Activate gym')}
-        </button>
+        <div className="shrink-0 flex items-center gap-2">
+          <button
+            onClick={() => {
+              if (confirm(gym.isActive ? 'Suspend this gym? It will be disabled platform-wide.' : 'Re-activate this gym?')) toggle.mutate();
+            }}
+            disabled={toggle.isPending}
+            className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+              gym.isActive ? 'bg-danger/15 text-danger hover:bg-danger/25' : 'bg-success/15 text-success hover:bg-success/25'
+            }`}
+          >
+            {toggle.isPending ? '…' : gym.isActive ? 'Suspend gym' : (gym.reactivationRequested ? 'Approve & activate' : 'Activate gym')}
+          </button>
+          {/* Permanent wipe — ask for the gym's name so it can't happen on a stray click */}
+          <button
+            onClick={() => {
+              const warning =
+                `Permanently DELETE "${gym.name}"?\n\n` +
+                `This also removes ${stats.totalMembers} membership(s), ${stats.payments} payment record(s), ` +
+                `its cashbook and all attendance. Staff go back to being ordinary users.\n\n` +
+                `Member and staff ACCOUNTS are kept. This cannot be undone.`;
+              if (!confirm(warning)) return;
+              const typed = prompt(`Type the gym name to confirm:\n${gym.name}`);
+              if (typed === null) return;
+              if (typed.trim() !== gym.name.trim()) return toast.error('Name did not match — nothing deleted');
+              remove.mutate();
+            }}
+            disabled={remove.isPending}
+            className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-danger text-white hover:bg-danger/85 transition-colors flex items-center gap-2 disabled:opacity-50"
+          >
+            <Trash2 className="w-4 h-4" />
+            {remove.isPending ? 'Deleting…' : 'Delete'}
+          </button>
+        </div>
       </div>
 
       {/* Reactivation request highlight */}

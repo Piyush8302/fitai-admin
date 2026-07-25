@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getUsers, toggleUserPremium, deactivateUser } from '@/lib/api';
+import { getUsers, toggleUserPremium, deactivateUser, deleteUser } from '@/lib/api';
 import { formatRelativeDate, getInitials } from '@/lib/utils';
 import {
   Users,
@@ -13,9 +13,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  Store,
+  Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+
+// How a user is attached to a gym, shortened for the badge.
+const ROLE_SHORT: Record<string, string> = { member: 'member', owner: 'owner', staff: 'staff' };
 
 export default function UsersPage() {
   const [search, setSearch] = useState('');
@@ -50,6 +55,16 @@ export default function UsersPage() {
     onError: () => toast.error('Failed to deactivate user'),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: deleteUser,
+    onSuccess: (res: any) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success(res?.message || 'User deleted');
+    },
+    // The API refuses (409) while the user still owns a gym — show that reason.
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Failed to delete user'),
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -82,7 +97,7 @@ export default function UsersPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border">
-                  {['User', 'Email', 'Goal', 'Status', 'Plan', 'Joined', 'Actions'].map((h) => (
+                  {['User', 'Email', 'Gym', 'Status', 'Plan', 'Joined', 'Actions'].map((h) => (
                     <th key={h} className="text-left text-xs font-medium text-muted uppercase tracking-wider px-5 py-3">
                       {h}
                     </th>
@@ -102,7 +117,30 @@ export default function UsersPage() {
                         </div>
                       </td>
                       <td className="px-5 py-4 text-sm text-muted">{user.email}</td>
-                      <td className="px-5 py-4 text-sm text-muted capitalize">{user.fitnessGoal || '—'}</td>
+                      {/* Which gym(s) this person belongs to, and in what capacity */}
+                      <td className="px-5 py-4">
+                        {user.gyms?.length ? (
+                          <div className="flex flex-wrap gap-1">
+                            {user.gyms.slice(0, 2).map((g: any) => (
+                              <Link
+                                key={`${g._id}-${g.as}`}
+                                href={`/gyms/${g._id}`}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                                title={`${g.name} · ${g.as}`}
+                              >
+                                <Store className="w-3 h-3 shrink-0" />
+                                <span className="truncate max-w-[110px]">{g.name}</span>
+                                <span className="opacity-60">· {ROLE_SHORT[g.as] || g.as}</span>
+                              </Link>
+                            ))}
+                            {user.gyms.length > 2 && (
+                              <span className="text-[11px] text-muted self-center">+{user.gyms.length - 2}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted">— App only</span>
+                        )}
+                      </td>
                       <td className="px-5 py-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           user.isActive !== false ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'
@@ -131,6 +169,17 @@ export default function UsersPage() {
                               <ShieldOff className="w-4 h-4" />
                             </button>
                           )}
+                          <button
+                            onClick={() => {
+                              if (confirm(`Permanently delete ${user.name || 'this user'}?\n\nTheir account, gym memberships, tracking and notifications are removed for good. This cannot be undone.`)) {
+                                deleteMutation.mutate(user._id);
+                              }
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-danger/10 text-muted hover:text-danger transition-colors"
+                            title="Delete permanently"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>

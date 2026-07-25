@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getUserById, toggleUserPremium, deactivateUser } from '@/lib/api';
+import { getUserById, toggleUserPremium, deactivateUser, deleteUser } from '@/lib/api';
 import { formatDate, getInitials } from '@/lib/utils';
 
 const safeDateFormat = (d: any, pattern?: string) => {
@@ -35,6 +35,8 @@ import {
   Footprints,
   Droplets,
   Bell,
+  Store,
+  Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -63,6 +65,17 @@ export default function UserDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['user', id] });
       toast.success('User deactivated');
     },
+  });
+
+  const remove = useMutation({
+    mutationFn: () => deleteUser(id),
+    onSuccess: (res: any) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success(res?.message || 'User deleted');
+      router.push('/users');
+    },
+    // The API refuses (409) while the user still owns a gym — surface that reason.
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Failed to delete user'),
   });
 
   if (isLoading) {
@@ -155,8 +168,54 @@ export default function UserDetailPage() {
                 Deactivate
               </button>
             )}
+            <button
+              onClick={() => {
+                if (confirm(`Permanently delete ${user.name || 'this user'}?\n\nTheir account, gym memberships, tracking and notifications are removed for good. This cannot be undone.`)) {
+                  remove.mutate();
+                }
+              }}
+              disabled={remove.isPending}
+              className="px-4 py-2 rounded-xl bg-danger/15 text-danger hover:bg-danger/25 text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+            >
+              <Trash2 className="w-4 h-4" />
+              {remove.isPending ? 'Deleting…' : 'Delete'}
+            </button>
           </div>
         </div>
+      </div>
+
+      {/* Gyms this person is attached to — member, owner or staff */}
+      <div>
+        <h2 className="text-lg font-semibold text-white mb-3">Gyms</h2>
+        {user.gyms?.length ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {user.gyms.map((g: any) => (
+              <Link
+                key={`${g._id}-${g.as}`}
+                href={`/gyms/${g._id}`}
+                className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3 hover:border-primary/50 transition-colors"
+              >
+                <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+                  <Store className="w-5 h-5 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-white font-medium truncate">{g.name}</p>
+                  <p className="text-xs text-muted truncate">
+                    {g.gymCode}
+                    {g.status ? ` · ${g.status}` : ''}
+                  </p>
+                </div>
+                <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-medium bg-primary/10 text-primary capitalize">
+                  {g.as}
+                </span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-card border border-border rounded-2xl p-5 text-sm text-muted">
+            Not linked to any gym — this is an app-only user.
+          </div>
+        )}
       </div>
 
       {/* Personal Info */}
