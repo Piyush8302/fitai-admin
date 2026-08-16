@@ -238,6 +238,13 @@ export async function getGymDetail(id: string) {
   return data as { success: boolean; data: import('@/types').GymDetail };
 }
 
+// One month of a gym's activity. `month` is 'YYYY-MM' (IST); omit it for the
+// current month.
+export async function getGymMonthly(id: string, month?: string) {
+  const { data } = await api.get(`/api/admin/gyms/${id}/monthly`, { params: month ? { month } : undefined });
+  return data as { success: boolean; data: import('@/types').GymMonthly };
+}
+
 export async function toggleGymActive(id: string) {
   const { data } = await api.put(`/api/admin/gyms/${id}/active`);
   return data;

@@ -101,6 +101,72 @@ export interface GymDetail {
   }[];
 }
 
+// One gym's activity inside a single (IST) month — the numbers plus the rows
+// behind them, so a figure on the page can always be opened up.
+export interface GymMemberRef {
+  _id: string;
+  name?: string;
+  phone?: string;
+}
+
+export interface GymMonthSummary {
+  key: string;            // 'YYYY-MM'
+  label: string;          // 'August 2026'
+  from: string;
+  to: string;
+  collection: { total: number; count: number; cash: number; online: number };
+  cashbook: { income: number; expense: number; net: number };
+  members: { joined: number; totalAtEnd: number };
+  attendance: {
+    checkins: number;
+    uniqueMembers: number;
+    activeDays: number;
+    busiestDay: { day: string; checkins: number } | null;
+    daily: { day: string; checkins: number }[];
+  };
+}
+
+export interface GymMonthly {
+  gym: { _id: string; name: string; createdAt: string };
+  months: string[];
+  month: GymMonthSummary;
+  // null for the all-time view, which has no month before it to compare against
+  prevMonth: { key: string; label: string; collection: number; expense: number; joined: number; checkins: number } | null;
+  dues: {
+    count: number;
+    amount: number;
+    list: {
+      _id: string;
+      user: GymMemberRef | null;
+      plan: string;
+      fee: number;
+      status: string;
+      dueDate?: string;
+      lastPaidDate?: string;
+      paid: boolean;
+    }[];
+  };
+  payments: {
+    _id: string;
+    user: GymMemberRef | null;
+    amount: number;
+    plan?: string;
+    method?: string;
+    paidDate: string;
+    note?: string;
+  }[];
+  joinedMembers: {
+    _id: string;
+    user: GymMemberRef | null;
+    plan: string;
+    fee: number;
+    status: string;
+    joinDate: string;
+    registeredVia: string;
+  }[];
+  expenses: { _id: string; amount: number; description: string; date: string; method?: string }[];
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   total: number;
