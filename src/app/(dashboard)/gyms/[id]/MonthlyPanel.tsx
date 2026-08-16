@@ -104,7 +104,7 @@ export default function MonthlyPanel({ gymId }: { gymId: string }) {
     { id: 'payments', label: 'Payments', count: d.payments.length },
     { id: 'joined', label: 'New members', count: d.joinedMembers.length },
     { id: 'expenses', label: 'Expenses', count: d.expenses.length },
-    ...(isAllTime ? [] : [{ id: 'dues', label: 'Fees due', count: d.dues.count }]),
+    ...(isAllTime ? [] : [{ id: 'dues' as Tab, label: 'Fees due', count: d.dues.count }]),
   ] : [];
 
   return (

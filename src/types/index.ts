@@ -130,7 +130,8 @@ export interface GymMonthly {
   gym: { _id: string; name: string; createdAt: string };
   months: string[];
   month: GymMonthSummary;
-  prevMonth: { key: string; label: string; collection: number; expense: number; joined: number; checkins: number };
+  // null for the all-time view, which has no month before it to compare against
+  prevMonth: { key: string; label: string; collection: number; expense: number; joined: number; checkins: number } | null;
   dues: {
     count: number;
     amount: number;
