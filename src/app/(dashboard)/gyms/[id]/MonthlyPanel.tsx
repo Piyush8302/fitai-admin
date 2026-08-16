@@ -84,8 +84,8 @@ export default function MonthlyPanel({ gymId }: { gymId: string }) {
       delta: null,
     },
     {
-      label: 'New members', value: String(d.month.members.joined),
-      sub: isAllTime ? `${d.month.members.totalAtEnd} total` : `${d.month.members.totalAtEnd} total by month end`,
+      label: isAllTime ? 'Members' : 'New members', value: String(d.month.members.joined),
+      sub: isAllTime ? 'ever joined this gym' : `${d.month.members.totalAtEnd} total by month end`,
       icon: UserPlus, color: 'text-blue-400', bg: 'bg-blue-400/10',
       delta: !isAllTime ? <Delta now={d.month.members.joined} before={d.prevMonth?.joined || 0} /> : null,
     },
