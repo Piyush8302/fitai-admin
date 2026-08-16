@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getGymDetail, toggleGymActive, deleteGym } from '@/lib/api';
+import MonthlyPanel from './MonthlyPanel';
 import { formatCurrency, formatNumber, formatDate, getInitials } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import {
@@ -156,6 +157,9 @@ export default function GymDetailPage() {
           );
         })}
       </div>
+
+      {/* Month by month — the cards above are lifetime totals, this is "how is it doing now" */}
+      <MonthlyPanel gymId={id} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Owner + staff */}
