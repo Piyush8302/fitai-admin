@@ -62,18 +62,19 @@ export default function MonthlyPanel({ gymId }: { gymId: string }) {
   const d = data?.data;
   const months = d?.months?.length ? d.months : [month];
 
+  const isAllTime = d?.month.key === 'all-time';
   const cards = d ? [
     {
       label: 'Collected', value: formatCurrency(d.month.collection.total, 'INR'),
       sub: `${d.month.collection.count} payment${d.month.collection.count === 1 ? '' : 's'}`,
       icon: Wallet, color: 'text-emerald-400', bg: 'bg-emerald-400/10',
-      delta: <Delta now={d.month.collection.total} before={d.prevMonth.collection} />,
+      delta: !isAllTime ? <Delta now={d.month.collection.total} before={d.prevMonth?.collection || 0} /> : null,
     },
     {
       label: 'Expenses', value: formatCurrency(d.month.cashbook.expense, 'INR'),
       sub: 'from the cashbook',
       icon: TrendingDown, color: 'text-danger', bg: 'bg-danger/10',
-      delta: <Delta now={d.month.cashbook.expense} before={d.prevMonth.expense} goodWhenUp={false} />,
+      delta: !isAllTime ? <Delta now={d.month.cashbook.expense} before={d.prevMonth?.expense || 0} goodWhenUp={false} /> : null,
     },
     {
       label: 'Net', value: formatCurrency(d.month.cashbook.net, 'INR'),
@@ -84,15 +85,15 @@ export default function MonthlyPanel({ gymId }: { gymId: string }) {
     },
     {
       label: 'New members', value: String(d.month.members.joined),
-      sub: `${d.month.members.totalAtEnd} total by month end`,
+      sub: isAllTime ? `${d.month.members.totalAtEnd} total` : `${d.month.members.totalAtEnd} total by month end`,
       icon: UserPlus, color: 'text-blue-400', bg: 'bg-blue-400/10',
-      delta: <Delta now={d.month.members.joined} before={d.prevMonth.joined} />,
+      delta: !isAllTime ? <Delta now={d.month.members.joined} before={d.prevMonth?.joined || 0} /> : null,
     },
     {
       label: 'Check-ins', value: String(d.month.attendance.checkins),
-      sub: `${d.month.attendance.uniqueMembers} member${d.month.attendance.uniqueMembers === 1 ? '' : 's'} · ${d.month.attendance.activeDays} day${d.month.attendance.activeDays === 1 ? '' : 's'}`,
+      sub: `${d.month.attendance.uniqueMembers} member${d.month.attendance.uniqueMembers === 1 ? '' : 's'}${d.month.attendance.activeDays ? ` · ${d.month.attendance.activeDays} day${d.month.attendance.activeDays === 1 ? '' : 's'}` : ''}`,
       icon: CalendarCheck, color: 'text-amber-400', bg: 'bg-amber-400/10',
-      delta: <Delta now={d.month.attendance.checkins} before={d.prevMonth.checkins} />,
+      delta: !isAllTime ? <Delta now={d.month.attendance.checkins} before={d.prevMonth?.checkins || 0} /> : null,
     },
   ] : [];
 
@@ -103,7 +104,7 @@ export default function MonthlyPanel({ gymId }: { gymId: string }) {
     { id: 'payments', label: 'Payments', count: d.payments.length },
     { id: 'joined', label: 'New members', count: d.joinedMembers.length },
     { id: 'expenses', label: 'Expenses', count: d.expenses.length },
-    { id: 'dues', label: 'Fees due', count: d.dues.count },
+    ...(isAllTime ? [] : [{ id: 'dues', label: 'Fees due', count: d.dues.count }]),
   ] : [];
 
   return (
@@ -124,7 +125,7 @@ export default function MonthlyPanel({ gymId }: { gymId: string }) {
           >
             {months.map((k) => (
               <option key={k} value={k}>
-                {monthLabel(k)}{k === thisMonthKey() ? ' (this month)' : ''}
+                {k === 'all-time' ? 'All time (since creation)' : `${monthLabel(k)}${k === thisMonthKey() ? ' (this month)' : ''}`}
               </option>
             ))}
           </select>
@@ -157,36 +158,38 @@ export default function MonthlyPanel({ gymId }: { gymId: string }) {
           </div>
 
           {/* Daily check-ins — shows whether the gym is busy all month or only around fee day */}
-          <div className="px-4 pb-4">
-            <div className="bg-background border border-border rounded-2xl p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">Check-ins per day</h3>
-                {d.month.attendance.busiestDay && (
-                  <span className="text-[11px] text-muted">
-                    busiest {formatDate(d.month.attendance.busiestDay.day, 'dd MMM')} · {d.month.attendance.busiestDay.checkins}
-                  </span>
+          {!isAllTime && (
+            <div className="px-4 pb-4">
+              <div className="bg-background border border-border rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">Check-ins per day</h3>
+                  {d.month.attendance.busiestDay && (
+                    <span className="text-[11px] text-muted">
+                      busiest {formatDate(d.month.attendance.busiestDay.day, 'dd MMM')} · {d.month.attendance.busiestDay.checkins}
+                    </span>
+                  )}
+                </div>
+                {d.month.attendance.daily.length === 0 ? (
+                  <p className="text-sm text-muted py-4 text-center">No check-ins this month</p>
+                ) : (
+                  <div className="flex items-end gap-1 h-28 overflow-x-auto">
+                    {d.month.attendance.daily.map((x) => (
+                      <div key={x.day} className="flex-1 min-w-[8px] flex flex-col items-center gap-1" title={`${x.day} · ${x.checkins} check-ins`}>
+                        <div
+                          className="w-full bg-primary/70 hover:bg-primary rounded-t transition-colors"
+                          style={{ height: `${Math.max(4, (x.checkins / peak) * 100)}%` }}
+                        />
+                        <span className="text-[9px] text-muted">{x.day.slice(-2)}</span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
-              {d.month.attendance.daily.length === 0 ? (
-                <p className="text-sm text-muted py-4 text-center">No check-ins this month</p>
-              ) : (
-                <div className="flex items-end gap-1 h-28 overflow-x-auto">
-                  {d.month.attendance.daily.map((x) => (
-                    <div key={x.day} className="flex-1 min-w-[8px] flex flex-col items-center gap-1" title={`${x.day} · ${x.checkins} check-ins`}>
-                      <div
-                        className="w-full bg-primary/70 hover:bg-primary rounded-t transition-colors"
-                        style={{ height: `${Math.max(4, (x.checkins / peak) * 100)}%` }}
-                      />
-                      <span className="text-[9px] text-muted">{x.day.slice(-2)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
-          </div>
+          )}
 
           {/* Unpaid dues get their own line — this is the number an owner is chased about */}
-          {unpaidDues.length > 0 && (
+          {!isAllTime && unpaidDues.length > 0 && (
             <div className="mx-4 mb-4 bg-amber-400/10 border border-amber-400/30 rounded-2xl p-3.5 flex items-start gap-3">
               <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
               <p className="text-xs text-amber-400">
